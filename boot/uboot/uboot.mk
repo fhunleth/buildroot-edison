@@ -61,7 +61,11 @@ UBOOT_BIN = u-boot.bin
 UBOOT_BIN_IFT = $(UBOOT_BIN).ift
 endif
 
+ifeq ($(KERNEL_ARCH),i386)
+UBOOT_ARCH = x86
+else
 UBOOT_ARCH = $(KERNEL_ARCH)
+endif
 
 UBOOT_MAKE_OPTS += \
 	CROSS_COMPILE="$(CCACHE) $(TARGET_CROSS)" \
