@@ -1,0 +1,3 @@
+# Locally calculated
+sha256 d0704d10237c66c3efafa6f7e5570c59a1d3fe5c6d99487540f90ebb37cd84c4 rustc-1.9.0-x86_64-unknown-linux-gnu.tar.gz
+sha256 2951dec835827974d03c7aafbf2c969f39bb530e1c200fd46f90bc01772fae39 rustc-1.9.0-i686-unknown-linux-gnu.tar.gz
