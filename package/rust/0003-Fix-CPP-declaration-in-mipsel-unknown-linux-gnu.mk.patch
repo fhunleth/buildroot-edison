@@ -1,0 +1,26 @@
+From f6d8c8f6dcdbabead3a06ed8f592143afaad16ba Mon Sep 17 00:00:00 2001
+From: Eric Le Bihan <eric.le.bihan.dev@free.fr>
+Date: Tue, 19 Apr 2016 12:57:24 +0200
+Subject: [PATCH 3/3] Fix CPP declaration in mipsel-unknown-linux-gnu.mk
+
+Signed-off-by: Eric Le Bihan <eric.le.bihan.dev@free.fr>
+---
+ mk/cfg/mipsel-unknown-linux-gnu.mk | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/mk/cfg/mipsel-unknown-linux-gnu.mk b/mk/cfg/mipsel-unknown-linux-gnu.mk
+index 9340c46..aaa18c2 100644
+--- a/mk/cfg/mipsel-unknown-linux-gnu.mk
++++ b/mk/cfg/mipsel-unknown-linux-gnu.mk
+@@ -2,7 +2,7 @@
+ CROSS_PREFIX_mipsel-unknown-linux-gnu=mipsel-linux-gnu-
+ CC_mipsel-unknown-linux-gnu=gcc
+ CXX_mipsel-unknown-linux-gnu=g++
+-CPP_mipsel-unknown-linux-gnu=gcc
++CPP_mipsel-unknown-linux-gnu=gcc -E
+ AR_mipsel-unknown-linux-gnu=ar
+ CFG_LIB_NAME_mipsel-unknown-linux-gnu=lib$(1).so
+ CFG_STATIC_LIB_NAME_mipsel-unknown-linux-gnu=lib$(1).a
+--
+2.1.4
+

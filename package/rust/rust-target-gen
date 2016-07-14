@@ -1,0 +1,315 @@
+#!/usr/bin/env python2.7
+# -*- coding: utf-8 -*-
+#
+# Copyright (C) 2016 Eric Le Bihan <eric.le.bihan.dev@free.fr>
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 2 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program. If not, see <http://www.gnu.org/licenses/>.
+#
+
+"""
+`rust-target-gen ` generates the target configuration or the specification
+file for the Rust compiler.
+
+These files will be used when cross-compiling the standard library or any
+program.
+
+The name of the target is to be formatted in one of the following schemes:
+
+- <cpu>-<vendor>-<os>-<system>
+- <cpu>-<os>-<system>
+
+By default, the contents of the configuration file is generated and printed to
+standard output. Add *-m spec* to the command line to generate the contents of
+the specification file. Add *-o FILE* to write contents to file FILE.
+
+It is possible to explicitly set the type of CPU using the *--cpu* option. To
+set one or more additional LLVM attributes (a.k.a. "features"), add as many as
+*--feature* options as needed.
+
+"""
+
+import os
+import re
+import sys
+import csv
+import StringIO
+import argparse
+
+__version__ = "0.1.1"
+
+
+class GenerationError(Exception):
+    """Error raised when generating file contents"""
+
+
+class Target:
+    """Store information about a target"""
+    def __init__(self, name):
+        match = re.match(r'([\w]+)(?:-([\w]+))?-linux-([\w]+)', name)
+        if not match:
+            raise ValueError("Invalid target name")
+        self.cpu = match.group(1)
+        self.vendor = match.group(2) or 'unknown'
+        self.system = match.group(3)
+        self.name = name
+        self.prefix = name + "-"
+
+    def to_pattern(self):
+        """Format the target name as search pattern"""
+        if self.vendor == 'unknown':
+            pattern = "{0.cpu}-[\w]+-linux-{0.system}"
+        else:
+            pattern = "{0.cpu}-(?!{0.vendor})[\w]+-linux-{0.system}"
+        return pattern.format(self)
+
+    @property
+    def canonical_name(self):
+        """Return the canonical name of the target"""
+        return "{0.cpu}-{0.vendor}-linux-{0.system}".format(self)
+
+
+#: Default list of pre-link-args
+DEFAULT_PRE_LINK_ARGS = ["-Wl,--as-needed", "-Wl,-z,noexecstack"]
+
+#: Template for the target specifiation JSON file
+SPEC_TEMPLATE = """{{
+      "llvm-target": "{name}",
+      "target-endian": "{endianness}",
+      "target-pointer-width": "{ptr-width}",
+      "data-layout": "{data-layout}",
+      "target-env": "{environment}",
+      "target-vendor": "{vendor}",
+      "arch": "{arch}",
+      "os": "linux",
+      "cpu": "{cpu}",
+      "features": "{features}",
+      "dynamic-linking": true,
+      "executables": true,
+      "morestack": true,
+      "linker-is-gnu": true,
+      "has-rpath": true,
+      "pre-link-args": [
+          {pre-link-args}
+       ],
+      "position-independent-executables": true,
+      "archive-format": "gnu"
+}}
+"""
+
+#: Contents of the target specifiation database.
+#: The information has been extracted from the Rust source code
+#: (src/libbrust_back/target/*.rs) and formatted as CSV.
+#: The first line is the header of the file, listing the fields of the table.
+SPEC_DATABASE_CONTENTS = """name;arch;endianness;ptr-width;data-layout;cpu;features;pre-link-args
+aarch64-unknown-linux-gnu;aarch64;little;64;e-m:e-i64:64-i128:128-n32:64-S128;;;;
+arm-unknown-linux-gnueabihf;arm;little;32;e-m:e-p:32:32-i64:64-v128:64:128-a:0:32-n32-S64;;+v6,+vfp2;;
+arm-unknown-linux-gnueabi;arm;little;32;e-m:e-p:32:32-i64:64-v128:64:128-a:0:32-n32-S64;;+v6;;
+i586-unknown-linux-gnu;x86;little;32;e-m:e-p:32:32-f64:32:64-f80:32-n8:16:32-S128;pentium;;-m32
+i686-unknown-linux-gnu;x86;little;32;e-m:e-p:32:32-f64:32:64-f80:32-n8:16:32-S128;pentium4;;-m32
+mips-unknown-linux-gnu;mips;big;32;E-m:m-p:32:32-i8:8:32-i16:16:32-i64:64-n32-S64;;+mips32r2,+soft-float;;
+mipsel-unknown-linux-gnu;mips;little;32;e-m:m-p:32:32-i8:8:32-i16:16:32-i64:64-n32-S64;;+mips32;;
+x86_64-unknown-linux-gnu;x86_64;little;64;e-m:e-i64:64-f80:128-n8:16:32:64-S128;;;-m64
+"""
+
+
+def join_quoted(strings, delimiter=','):
+    """Quote strings and join them as a single string, using a delimiter.
+
+    :param strings: list of strings
+    :type strings: list
+
+    :param delimiter: optional delimiter
+    :type delimiter: Optional[str]
+
+    :return: a new string
+    :rtype: str
+    """
+    return delimiter.join(["\"{}\"".format(s) for s in strings])
+
+
+def find_similar_spec(target):
+    """Find a target specification similar to a given one.
+
+    :param target: target to be created
+    :type target: Target
+
+    :return: the reference target specification as a dict
+    :rtype: dict of str to str
+    """
+    expr = re.compile(target.to_pattern() + '$')
+    f = StringIO.StringIO(SPEC_DATABASE_CONTENTS)
+    reader = csv.DictReader(f, delimiter=';', quotechar='"')
+    for row in reader:
+        if expr.match(row['name']):
+            spec = dict(row)
+            fields = spec['name'].split('-')
+            spec['vendor'] = fields[1]
+            spec['environment'] = fields[3]
+            pre_links_args = DEFAULT_PRE_LINK_ARGS + spec['pre-link-args'].split()
+            spec['pre-link-args'] = join_quoted(pre_links_args, ', ')
+            spec['cpu'] = spec['cpu'] or 'generic'
+            return spec
+
+    raise GenerationError("Can not find matching specification")
+
+
+def gen_spec(target, cpu=None, features=[]):
+    """Generate target specification file.
+
+    :param target: target to be created
+    :type target: Target
+
+    :param cpu: optional CPU type
+    :type cpu: Optional[str]
+
+    :param features: optional list of additional LLVM features
+    :type features: Optional[list]
+
+    :return: contents of the configuration file
+    :rtype: str
+    """
+    spec = find_similar_spec(target)
+    spec['name'] = target.name
+    spec['vendor'] = target.vendor
+    if features:
+        spec['features'] += ',' + ','.join(features)
+    spec['cpu'] = cpu or spec['cpu']
+    return SPEC_TEMPLATE.format(**spec)
+
+
+def gen_conf_from(target, filename):
+    """Generate target configuration file from an existing one.
+
+    :param target: target to be created
+    :type target: Target
+
+    :param filename: path to an existing configuration file
+    :type str:
+
+    :return: contents of the new configuration file
+    :rtype: str
+    """
+    (name, e) = os.path.splitext(os.path.basename(filename))
+    expr = re.compile(r'CROSS_PREFIX_[-\w]+=(?:[-\w]+)?\n')
+    with open(filename) as input:
+        contents = input.read()
+        contents = contents.replace(name, target.name)
+        line = "CROSS_PREFIX_{}={}\n".format(target.name, target.prefix)
+        if expr.search(contents):
+            contents = expr.sub(line, contents)
+        else:
+            contents += line
+
+    return contents
+
+
+def find_similar_conf(target, srcdir):
+    """Find a configuration file similar to a given target.
+
+    :param target: target to be created
+    :type target: Target
+
+    :param srcdir: path to Rust source code
+    :type srcdir: str
+
+    :return: path to the matching configuration file
+    :rtype: str
+    """
+    cfgdir = os.path.join(srcdir, 'mk', 'cfg')
+    expr = re.compile(target.to_pattern() + '.mk')
+    candidates = filter(lambda f: expr.match(f), os.listdir(cfgdir))
+    if len(candidates) != 1:
+        raise GenerationError("Can not find matching configuration")
+    return os.path.join(cfgdir, candidates[0])
+
+
+def gen_conf(target, srcdir):
+    """Generate target configuration file.
+
+    :param target: target to be created
+    :type target: Target
+
+    :param srcdir: path to Rust source code
+    :type srcdir: str
+
+    :return: contents of the configuration file
+    :rtype: str
+    """
+    reference = find_similar_conf(target, srcdir)
+    return gen_conf_from(target, reference)
+
+
+def save_to_file(filename, text):
+    """Save text to a file.
+
+    :param filename: path to the destination filename
+    :type filename: str
+
+    :param text: contents of the file
+    :type text: str
+    """
+    dstdir = os.path.dirname(filename)
+    if not os.path.exists(dstdir):
+        os.makedirs(dstdir)
+    with open(filename, 'w') as f:
+        f.write(contents)
+
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-v', '--version',
+                        action='version',
+                        version=__version__)
+    parser.add_argument('-c', '--cpu',
+                        help='Set CPU type')
+    parser.add_argument('-f', '--feature',
+                        action='append',
+                        metavar='FEATURE',
+                        dest='features',
+                        default=[],
+                        help='Add new LLVM feature')
+    parser.add_argument('-i', '--input',
+                        dest='srcdir',
+                        metavar='DIR',
+                        default=os.getcwd(),
+                        help='set the path to Rust source code')
+    parser.add_argument('-p', '--prefix',
+                        help='set the cross-compiler prefix')
+    parser.add_argument('-m', '--mode',
+                        choices=('conf', 'spec'),
+                        default='conf',
+                        help='set the operating mode')
+    parser.add_argument('-o', '--output',
+                        metavar='FILE',
+                        help='write generated contents to FILE')
+    parser.add_argument('target',
+                        help='target name ("<cpu>-<vendor>-<os>-<system>")')
+
+    args = parser.parse_args()
+
+    target = Target(args.target)
+    if args.prefix:
+        target.prefix = args.prefix
+
+    if args.mode == 'conf':
+        contents = gen_conf(target, args.srcdir)
+    else:
+        contents = gen_spec(target, args.cpu, args.features)
+
+    if not args.output:
+        sys.stdout.write(contents)
+    else:
+        save_to_file(args.output, contents)
+
+# vim: ts=4 sw=4 sts=4 et ai

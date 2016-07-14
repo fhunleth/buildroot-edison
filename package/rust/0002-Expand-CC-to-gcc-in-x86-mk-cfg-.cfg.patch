@@ -1,0 +1,73 @@
+From a371eb06fef803dcf9894fa0ad6941341887d2d8 Mon Sep 17 00:00:00 2001
+From: Eric Le Bihan <eric.le.bihan.dev@free.fr>
+Date: Tue, 19 Apr 2016 12:51:29 +0200
+Subject: [PATCH 2/3] Expand $(CC) to gcc in x86 mk/cfg/*.cfg
+
+Expand $(CC) and friends to gcc and introduce empty CROSS_PREFIX_ in
+Makefile fragments for cross-compilation of i586, i686 and x86_64 Linux
+platforms to allow use of Sourcery CodeBench toolchains.
+
+Signed-off-by: Eric Le Bihan <eric.le.bihan.dev@free.fr>
+---
+ mk/cfg/i586-unknown-linux-gnu.mk   | 9 +++++----
+ mk/cfg/i686-unknown-linux-gnu.mk   | 9 +++++----
+ mk/cfg/x86_64-unknown-linux-gnu.mk | 9 +++++----
+ 3 files changed, 15 insertions(+), 12 deletions(-)
+
+diff --git a/mk/cfg/i586-unknown-linux-gnu.mk b/mk/cfg/i586-unknown-linux-gnu.mk
+index 0609f36..45af3b8 100644
+--- a/mk/cfg/i586-unknown-linux-gnu.mk
++++ b/mk/cfg/i586-unknown-linux-gnu.mk
+@@ -1,8 +1,9 @@
+ # i586-unknown-linux-gnu configuration
+-CC_i586-unknown-linux-gnu=$(CC)
+-CXX_i586-unknown-linux-gnu=$(CXX)
+-CPP_i586-unknown-linux-gnu=$(CPP)
+-AR_i586-unknown-linux-gnu=$(AR)
++CROSS_PREFIX_i686-unknown-linux-gnu=
++CC_i586-unknown-linux-gnu=gcc
++CXX_i586-unknown-linux-gnu=g++
++CPP_i586-unknown-linux-gnu=gcc -E
++AR_i586-unknown-linux-gnu=ar
+ CFG_LIB_NAME_i586-unknown-linux-gnu=lib$(1).so
+ CFG_STATIC_LIB_NAME_i586-unknown-linux-gnu=lib$(1).a
+ CFG_LIB_GLOB_i586-unknown-linux-gnu=lib$(1)-*.so
+diff --git a/mk/cfg/i686-unknown-linux-gnu.mk b/mk/cfg/i686-unknown-linux-gnu.mk
+index 88c0907..aa4ce42 100644
+--- a/mk/cfg/i686-unknown-linux-gnu.mk
++++ b/mk/cfg/i686-unknown-linux-gnu.mk
+@@ -1,8 +1,9 @@
+ # i686-unknown-linux-gnu configuration
+-CC_i686-unknown-linux-gnu=$(CC)
+-CXX_i686-unknown-linux-gnu=$(CXX)
+-CPP_i686-unknown-linux-gnu=$(CPP)
+-AR_i686-unknown-linux-gnu=$(AR)
++CROSS_PREFIX_i686-unknown-linux-gnu=
++CC_i686-unknown-linux-gnu=gcc
++CXX_i686-unknown-linux-gnu=g++
++CPP_i686-unknown-linux-gnu=gcc -E
++AR_i686-unknown-linux-gnu=ar
+ CFG_LIB_NAME_i686-unknown-linux-gnu=lib$(1).so
+ CFG_STATIC_LIB_NAME_i686-unknown-linux-gnu=lib$(1).a
+ CFG_LIB_GLOB_i686-unknown-linux-gnu=lib$(1)-*.so
+diff --git a/mk/cfg/x86_64-unknown-linux-gnu.mk b/mk/cfg/x86_64-unknown-linux-gnu.mk
+index 044c687..bdd88cd 100644
+--- a/mk/cfg/x86_64-unknown-linux-gnu.mk
++++ b/mk/cfg/x86_64-unknown-linux-gnu.mk
+@@ -1,8 +1,9 @@
+ # x86_64-unknown-linux-gnu configuration
+-CC_x86_64-unknown-linux-gnu=$(CC)
+-CXX_x86_64-unknown-linux-gnu=$(CXX)
+-CPP_x86_64-unknown-linux-gnu=$(CPP)
+-AR_x86_64-unknown-linux-gnu=$(AR)
++CROSS_PREFIX_x86_64-unknown-linux-gnu=
++CC_x86_64-unknown-linux-gnu=gcc
++CXX_x86_64-unknown-linux-gnu=g++
++CPP_x86_64-unknown-linux-gnu=gcc -E
++AR_x86_64-unknown-linux-gnu=ar
+ CFG_LIB_NAME_x86_64-unknown-linux-gnu=lib$(1).so
+ CFG_STATIC_LIB_NAME_x86_64-unknown-linux-gnu=lib$(1).a
+ CFG_LIB_GLOB_x86_64-unknown-linux-gnu=lib$(1)-*.so
+--
+2.1.4
+
