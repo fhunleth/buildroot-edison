@@ -1,0 +1,8 @@
+config BR2_PACKAGE_ERLANG_P1_FAST_XML
+	bool "erlang-p1-fast-xml"
+	select BR2_PACKAGE_ERLANG_P1_UTILS
+	select BR2_PACKAGE_EXPAT
+	help
+	  Fast Expat based Erlang XML parsing library
+
+	  https://github.com/processone/fast_xml
