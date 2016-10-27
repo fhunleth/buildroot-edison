@@ -4,7 +4,7 @@
 #
 ################################################################################
 
-ERLANG_P1_UTILS_VERSION = 1.0.3
+ERLANG_P1_UTILS_VERSION = 1.0.5
 ERLANG_P1_UTILS_SITE = $(call github,processone,p1_utils,$(ERLANG_P1_UTILS_VERSION))
 ERLANG_P1_UTILS_LICENSE = GPLv2+
 ERLANG_P1_UTILS_LICENSE_FILES = LICENSE.txt
