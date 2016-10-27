@@ -4,14 +4,14 @@
 #
 ################################################################################
 
-EJABBERD_VERSION = 16.01
+EJABBERD_VERSION = 16.09
 EJABBERD_SOURCE = ejabberd-$(EJABBERD_VERSION).tgz
 EJABBERD_SITE = https://www.process-one.net/downloads/ejabberd/$(EJABBERD_VERSION)
 EJABBERD_LICENSE = GPLv2+ with OpenSSL exception
 EJABBERD_LICENSE_FILES = COPYING
 EJABBERD_DEPENDENCIES = getent openssl host-erlang-lager erlang-lager \
 	erlang-p1-cache-tab erlang-p1-iconv erlang-p1-sip \
-	erlang-p1-stringprep erlang-p1-xml erlang-p1-yaml erlang-p1-zlib
+	erlang-p1-stringprep erlang-p1-fast-xml erlang-p1-yaml erlang-p1-zlib
 
 # 0001-remove-make-targets-for-deps.patch updates Makefile.in
 EJABBERD_USE_AUTOCONF = YES
