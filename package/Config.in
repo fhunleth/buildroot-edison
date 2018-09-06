@@ -222,6 +222,7 @@ comment "Fonts"
 	source "package/liberation/Config.in"
 	source "package/noto-cjk/Config.in"
 	source "package/noto-emoji/Config.in"
+	source "package/noto-fonts/Config.in"
 
 comment "Icons"
 	source "package/adwaita-icon-theme/Config.in"
